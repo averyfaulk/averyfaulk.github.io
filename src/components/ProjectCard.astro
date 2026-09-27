@@ -1,0 +1,53 @@
+---
+import type { Project } from '../data/projects';
+import type { ReleaseInfo } from '../lib/releases';
+import VersionBadge from './VersionBadge.astro';
+
+interface Props {
+  project: Project;
+  release: ReleaseInfo | null;
+}
+
+const { project, release } = Astro.props;
+---
+
+<article
+  class="relative flex flex-col gap-5 rounded-xl border border-line bg-surface p-6 transition-colors hover:border-line/80 hover:bg-elevated sm:p-8"
+>
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <h2 class="text-xl font-semibold tracking-tight sm:text-2xl">
+        <a href={`/projects/${project.slug}/`} class="after:absolute after:inset-0 hover:text-accent">
+          {project.name}
+        </a>
+      </h2>
+      <p class="mt-1 text-sm text-muted">{project.tagline}</p>
+    </div>
+    {release && <VersionBadge version={release.version} isBeta={release.isBeta} href={release.url} />}
+  </div>
+
+  <p class="text-pretty leading-relaxed text-fg/90">{project.summary}</p>
+
+  <ul class="flex flex-wrap gap-2" aria-label="Tech stack">
+    {
+      project.tech.map((item) => (
+        <li class="rounded-md border border-line px-2 py-1 text-xs text-muted">{item}</li>
+      ))
+    }
+  </ul>
+
+  <!-- position:relative on the card makes the stretched link above cover
+       the whole card; these stay above it so they remain clickable. -->
+  <div class="relative z-10 flex flex-wrap gap-x-5 gap-y-2 text-sm">
+    <a
+      href={`https://github.com/${project.repo}`}
+      rel="noopener"
+      class="font-medium text-accent hover:underline"
+    >
+      Repository
+    </a>
+    <a href={`/projects/${project.slug}/`} class="text-muted hover:text-fg">
+      Details &amp; downloads
+    </a>
+  </div>
+</article>

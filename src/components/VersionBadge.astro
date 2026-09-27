@@ -1,0 +1,27 @@
+---
+interface Props {
+  version: string;
+  isBeta: boolean;
+  href?: string;
+}
+
+const { version, isBeta, href } = Astro.props;
+
+const versionClass =
+  'text-sm font-medium text-muted tabular-nums hover:text-accent transition-colors';
+const badgeClass =
+  'rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-widest text-accent';
+---
+
+<span class="inline-flex items-center gap-2">
+  {
+    href ? (
+      <a href={href} rel="noopener" class={versionClass}>
+        v{version}
+      </a>
+    ) : (
+      <span class={versionClass}>v{version}</span>
+    )
+  }
+  {isBeta && <span class={badgeClass}>beta</span>}
+</span>

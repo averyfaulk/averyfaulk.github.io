@@ -1,0 +1,62 @@
+---
+import '../styles/global.css';
+import { site } from '../data/site';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const { title, description = site.description } = Astro.props;
+const pageTitle = title ? `${title} · ${site.name}` : `${site.name} — ${site.tagline}`;
+// Astro.site is only defined when `site` is set in astro.config.mjs.
+const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site) : undefined;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    {canonical && <link rel="canonical" href={canonical} />}
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#09090b" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    {canonical && <meta property="og:url" content={canonical} />}
+  </head>
+  <body class="flex min-h-dvh flex-col">
+    <header class="border-b border-line">
+      <div
+        class="mx-auto flex w-full max-w-3xl items-center justify-between gap-4 px-6 py-4"
+      >
+        <a href="/" class="font-semibold tracking-tight hover:text-accent">{site.name}</a>
+        <a
+          href={site.links.github}
+          rel="me noopener"
+          class="text-sm text-muted hover:text-fg"
+        >
+          GitHub
+        </a>
+      </div>
+    </header>
+
+    <main class="mx-auto w-full max-w-3xl flex-1 px-6 py-12">
+      <slot />
+    </main>
+
+    <footer class="border-t border-line">
+      <div
+        class="mx-auto flex w-full max-w-3xl flex-col gap-1 px-6 py-6 text-sm text-muted sm:flex-row sm:items-center sm:justify-between"
+      >
+        <p>© {new Date().getFullYear()} {site.name}</p>
+        <p>Built with Astro. No tracking, no client-side JavaScript.</p>
+      </div>
+    </footer>
+  </body>
+</html>

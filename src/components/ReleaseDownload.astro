@@ -1,0 +1,65 @@
+---
+import type { ReleaseInfo } from '../lib/releases';
+import { formatBytes, formatDate } from '../lib/releases';
+import VersionBadge from './VersionBadge.astro';
+
+interface Props {
+  release: ReleaseInfo;
+  repo: string;
+  platforms: string[];
+}
+
+const { release, repo, platforms } = Astro.props;
+---
+
+<section class="rounded-xl border border-line bg-surface p-6 sm:p-8">
+  <div class="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-5">
+    <h2 class="text-lg font-semibold tracking-tight">Download</h2>
+    <VersionBadge version={release.version} isBeta={release.isBeta} href={release.url} />
+  </div>
+
+  {
+    release.downloads.length > 0 ? (
+      <ul class="mt-5 flex flex-col gap-3">
+        {release.downloads.map((download) => (
+          <li>
+            <a
+              href={download.url}
+              rel="noopener"
+              class="group flex items-center justify-between gap-4 rounded-lg border border-line bg-elevated px-4 py-3.5 transition-colors hover:border-accent/50"
+            >
+              <span class="min-w-0">
+                <span class="block font-medium">{download.platformLabel}</span>
+                <span class="mt-0.5 block truncate text-sm text-muted">
+                  {download.filename} · {formatBytes(download.bytes)}
+                </span>
+              </span>
+              <span class="shrink-0 text-accent transition-transform group-hover:translate-y-0.5" aria-hidden="true">
+                ↓
+              </span>
+              <span class="sr-only">Download {download.filename} for {download.platformLabel}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <p class="mt-5 text-sm text-muted">
+        No installers are attached to this release. Grab the source from the{' '}
+        <a href={`https://github.com/${repo}`} rel="noopener" class="text-accent hover:underline">
+          repository
+        </a>{' '}
+        instead.
+      </p>
+    )
+  }
+
+  <p class="mt-5 text-sm text-muted">
+    <span class="tabular-nums">Published {formatDate(release.publishedAt)}</span>
+    <span aria-hidden="true"> · </span>
+    <a href={release.url} rel="noopener" class="text-accent hover:underline">
+      All releases
+    </a>
+    <span aria-hidden="true"> · </span>
+    {platforms.join(' · ')}
+  </p>
+</section>

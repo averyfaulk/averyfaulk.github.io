@@ -1,0 +1,27 @@
+{
+  "repos": {
+    "averyfaulk/RimChronicle": {
+      "tag": "1.2.3",
+      "version": "1.2.3-beta",
+      "isBeta": true,
+      "publishedAt": "2026-09-27T02:37:55Z",
+      "url": "https://github.com/averyfaulk/RimChronicle/releases/tag/1.2.3",
+      "downloads": [
+        {
+          "platform": "linux",
+          "platformLabel": "Linux",
+          "filename": "RimChronicle-1.2.3-beta.AppImage",
+          "url": "https://github.com/averyfaulk/RimChronicle/releases/download/1.2.3/RimChronicle-1.2.3-beta.AppImage",
+          "bytes": 143103337
+        },
+        {
+          "platform": "windows",
+          "platformLabel": "Windows",
+          "filename": "RimChronicle.Setup.1.2.3-beta.exe",
+          "url": "https://github.com/averyfaulk/RimChronicle/releases/download/1.2.3/RimChronicle.Setup.1.2.3-beta.exe",
+          "bytes": 113760344
+        }
+      ]
+    }
+  }
+}

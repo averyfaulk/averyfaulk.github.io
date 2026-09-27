@@ -1,0 +1,28 @@
+# build output
+dist/
+# generated types
+.astro/
+
+# dependencies
+node_modules/
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+
+# environment variables
+# Broad glob so a stray .env.local or .env.production cannot be committed.
+# The cache file is intentionally NOT ignored: it is a published build input
+# that lets a release panel still render when the GitHub API is unreachable.
+.env
+.env.*
+!.env.example
+
+# macOS-specific files
+.DS_Store
+
+# jetbrains setting folder
+.idea/
