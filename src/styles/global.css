@@ -5,6 +5,9 @@
   --color-surface: #101014;
   --color-elevated: #17171c;
   --color-line: #22222a;
+  /* Sits just clear of a card fill (#17171c) at 1.29:1, where --color-line
+     against the same fill drops to 1.16:1 and stops reading as an edge. */
+  --color-line-strong: #2a2a33;
   --color-fg: #e8e8ec;
   --color-muted: #9c9ca8;
   --color-accent: #d8912f;

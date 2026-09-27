@@ -39,14 +39,27 @@ const jsonLdText = jsonLd ? JSON.stringify(jsonLd).replace(/</g, '\\u003c') : un
     {jsonLdText && <script type="application/ld+json" is:inline set:html={jsonLdText} />}
   </head>
   <body class="flex min-h-dvh flex-col">
-    <header class="border-b border-line">
-      <div
-        class="mx-auto flex w-full max-w-3xl items-center justify-end gap-4 px-6 py-4"
-      >
+    <!-- `sticky` gives the bar a positioning context, so the logo and the
+         pill both sit above the project cards' z-10 stretched-link rows. -->
+    <header
+      class="sticky top-0 z-50 border-b border-line-strong bg-elevated/80 backdrop-blur-md"
+    >
+      <div class="mx-auto flex w-full max-w-3xl items-center gap-3 px-6 py-3.5">
+        <!-- favicon.svg carries its own aria-label, so the image is decorative
+             and the accessible name comes from the link. -->
+        <a href="/" aria-label="Home" class="flex items-center">
+          <img
+            src="/favicon.svg"
+            alt=""
+            width="28"
+            height="28"
+            class="h-7 w-7 rounded-lg"
+          />
+        </a>
         <a
           href={site.links.github}
           rel="me noopener"
-          class="text-sm text-muted hover:text-fg"
+          class="ml-auto inline-block rounded-full border border-line-strong px-3.5 py-1.5 text-sm text-muted transition-colors hover:border-accent/50 hover:text-fg"
         >
           GitHub
         </a>
