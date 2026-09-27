@@ -41,9 +41,8 @@ const jsonLdText = jsonLd ? JSON.stringify(jsonLd).replace(/</g, '\\u003c') : un
   <body class="flex min-h-dvh flex-col">
     <header class="border-b border-line">
       <div
-        class="mx-auto flex w-full max-w-3xl items-center justify-between gap-4 px-6 py-4"
+        class="mx-auto flex w-full max-w-3xl items-center justify-end gap-4 px-6 py-4"
       >
-        <a href="/" class="font-semibold tracking-tight hover:text-accent">{site.name}</a>
         <a
           href={site.links.github}
           rel="me noopener"
