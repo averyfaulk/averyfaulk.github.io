@@ -58,12 +58,6 @@ if (release) jsonLd.softwareVersion = release.version;
     </header>
 
     <div class="flex flex-col gap-10">
-      {
-        release && (
-          <ReleaseDownload panel={{ release, updatedAt }} repo={project.repo ?? ''} platforms={platforms} />
-        )
-      }
-
       <section class="leading-relaxed text-fg/90">
         <p>{project.detail}</p>
       </section>
@@ -83,6 +77,12 @@ if (release) jsonLd.softwareVersion = release.version;
               ))}
             </ul>
           </section>
+        )
+      }
+
+      {
+        release && (
+          <ReleaseDownload panel={{ release, updatedAt }} repo={project.repo ?? ''} platforms={platforms} />
         )
       }
 
