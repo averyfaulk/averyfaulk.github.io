@@ -1,12 +1,17 @@
 ---
 import Base from '../../layouts/Base.astro';
 import ReleaseDownload from '../../components/ReleaseDownload.astro';
-import { projects } from '../../data/projects';
+import { hasPage, projects } from '../../data/projects';
 import type { Project } from '../../data/projects';
-import { getRelease } from '../../lib/releases';
+import { site } from '../../data/site';
+import { getProjectRelease } from '../../lib/releases';
 
+// Work-in-progress placeholders have no page behind them.
 export function getStaticPaths() {
-  return projects.map((project) => ({ params: { slug: project.slug }, props: { project } }));
+  return projects.filter(hasPage).map((project) => ({
+    params: { slug: project.slug },
+    props: { project },
+  }));
 }
 
 interface Props {
@@ -14,55 +19,87 @@ interface Props {
 }
 
 const { project } = Astro.props;
-const release = project.showReleases ? await getRelease(project) : null;
+const { release, updatedAt } = await getProjectRelease(project);
+
+const features = project.features ?? [];
+const tech = project.tech ?? [];
+const platforms = project.platforms ?? [];
+
+const jsonLd: Record<string, unknown> = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: project.name,
+  description: project.summary,
+  url: `${site.url}/projects/${project.slug}/`,
+  applicationCategory: 'UtilityApplication',
+};
+if (project.repo) jsonLd.codeRepository = `https://github.com/${project.repo}`;
+if (platforms.length) jsonLd.operatingSystem = platforms.join(', ');
+if (release) jsonLd.softwareVersion = release.version;
 ---
 
-<Base title={project.name} description={project.summary}>
+<Base title={project.name} description={project.summary} jsonLd={jsonLd}>
   <article>
     <header class="pb-8">
       <a href="/" class="text-sm text-muted hover:text-fg">← All projects</a>
       <h1 class="mt-4 text-3xl font-semibold tracking-tight sm:text-4xl">{project.name}</h1>
       <p class="mt-2 text-lg text-muted">{project.tagline}</p>
-      <a
-        href={`https://github.com/${project.repo}`}
-        rel="noopener"
-        class="mt-5 inline-block font-medium text-accent hover:underline"
-      >
-        View on GitHub →
-      </a>
+      {
+        project.repo && (
+          <a
+            href={`https://github.com/${project.repo}`}
+            rel="noopener"
+            class="mt-5 inline-block font-medium text-accent hover:underline"
+          >
+            View on GitHub →
+          </a>
+        )
+      }
     </header>
 
     <div class="flex flex-col gap-10">
-      {release && <ReleaseDownload release={release} repo={project.repo} platforms={project.platforms} />}
+      {
+        release && (
+          <ReleaseDownload panel={{ release, updatedAt }} repo={project.repo ?? ''} platforms={platforms} />
+        )
+      }
 
       <section class="leading-relaxed text-fg/90">
         <p>{project.detail}</p>
       </section>
 
-      <section aria-labelledby="features-heading">
-        <h2 id="features-heading" class="pb-4 text-lg font-semibold tracking-tight">What it does</h2>
-        <ul class="grid gap-4 sm:grid-cols-2">
-          {
-            project.features.map((feature) => (
-              <li class="rounded-lg border border-line bg-surface p-5">
-                <h3 class="font-medium">{feature.title}</h3>
-                <p class="mt-1.5 text-sm leading-relaxed text-muted">{feature.body}</p>
-              </li>
-            ))
-          }
-        </ul>
-      </section>
+      {
+        features.length > 0 && (
+          <section aria-labelledby="features-heading">
+            <h2 id="features-heading" class="pb-4 text-lg font-semibold tracking-tight">
+              What it does
+            </h2>
+            <ul class="grid gap-4 sm:grid-cols-2">
+              {features.map((feature) => (
+                <li class="rounded-lg border border-line bg-surface p-5">
+                  <h3 class="font-medium">{feature.title}</h3>
+                  <p class="mt-1.5 text-sm leading-relaxed text-muted">{feature.body}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )
+      }
 
-      <section aria-labelledby="tech-heading">
-        <h2 id="tech-heading" class="pb-4 text-lg font-semibold tracking-tight">Built with</h2>
-        <ul class="flex flex-wrap gap-2">
-          {
-            project.tech.map((item) => (
-              <li class="rounded-md border border-line px-2.5 py-1 text-sm text-muted">{item}</li>
-            ))
-          }
-        </ul>
-      </section>
+      {
+        tech.length > 0 && (
+          <section aria-labelledby="tech-heading">
+            <h2 id="tech-heading" class="pb-4 text-lg font-semibold tracking-tight">
+              Built with
+            </h2>
+            <ul class="flex flex-wrap gap-2">
+              {tech.map((item) => (
+                <li class="rounded-md border border-line px-2.5 py-1 text-sm text-muted">{item}</li>
+              ))}
+            </ul>
+          </section>
+        )
+      }
     </div>
   </article>
 </Base>

@@ -1,14 +1,22 @@
 ---
 import type { Project } from '../data/projects';
-import type { ReleaseInfo } from '../lib/releases';
+import { hasPage } from '../data/projects';
+import type { ReleasePanel } from '../lib/releases';
 import VersionBadge from './VersionBadge.astro';
 
 interface Props {
   project: Project;
-  release: ReleaseInfo | null;
+  panel: ReleasePanel;
 }
 
-const { project, release } = Astro.props;
+const { project, panel } = Astro.props;
+
+const page = hasPage(project) ? `/projects/${project.slug}/` : null;
+const wip = project.status === 'wip';
+const tech = project.tech ?? [];
+
+const chipClass =
+  'rounded-full border border-line bg-elevated px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-widest text-muted';
 ---
 
 <article
@@ -17,37 +25,61 @@ const { project, release } = Astro.props;
   <div class="flex flex-wrap items-start justify-between gap-3">
     <div>
       <h2 class="text-xl font-semibold tracking-tight sm:text-2xl">
-        <a href={`/projects/${project.slug}/`} class="after:absolute after:inset-0 hover:text-accent">
-          {project.name}
-        </a>
+        {
+          page ? (
+            <a href={page} class="after:absolute after:inset-0 hover:text-accent">
+              {project.name}
+            </a>
+          ) : (
+            project.name
+          )
+        }
       </h2>
       <p class="mt-1 text-sm text-muted">{project.tagline}</p>
     </div>
-    {release && <VersionBadge version={release.version} isBeta={release.isBeta} href={release.url} />}
+    {
+      wip ? (
+        <span class={chipClass}>Work in progress</span>
+      ) : panel.release ? (
+        <VersionBadge version={panel.release.version} isBeta={panel.release.isBeta} href={panel.release.url} />
+      ) : null
+    }
   </div>
 
   <p class="text-pretty leading-relaxed text-fg/90">{project.summary}</p>
 
-  <ul class="flex flex-wrap gap-2" aria-label="Tech stack">
-    {
-      project.tech.map((item) => (
-        <li class="rounded-md border border-line px-2 py-1 text-xs text-muted">{item}</li>
-      ))
-    }
-  </ul>
+  {
+    tech.length > 0 && (
+      <ul class="flex flex-wrap gap-2" aria-label="Tech stack">
+        {tech.map((item) => (
+          <li class="rounded-md border border-line px-2 py-1 text-xs text-muted">{item}</li>
+        ))}
+      </ul>
+    )
+  }
 
-  <!-- position:relative on the card makes the stretched link above cover
-       the whole card; these stay above it so they remain clickable. -->
-  <div class="relative z-10 flex flex-wrap gap-x-5 gap-y-2 text-sm">
-    <a
-      href={`https://github.com/${project.repo}`}
-      rel="noopener"
-      class="font-medium text-accent hover:underline"
-    >
-      Repository
-    </a>
-    <a href={`/projects/${project.slug}/`} class="text-muted hover:text-fg">
-      Details &amp; downloads
-    </a>
-  </div>
+  {/* A JSX-style comment, so this explanation stays in the source and is not
+      shipped in the built HTML.
+      position:relative on the card makes the stretched link above cover the
+      whole card; this row stays above it so its links remain clickable. */}
+  {
+    (project.repo || page) && (
+      <div class="relative z-10 flex flex-wrap gap-x-5 gap-y-2 text-sm">
+        {project.repo && (
+          <a
+            href={`https://github.com/${project.repo}`}
+            rel="noopener"
+            class="font-medium text-accent hover:underline"
+          >
+            Repository
+          </a>
+        )}
+        {page && (
+          <a href={page} class="text-muted hover:text-fg">
+            Details &amp; downloads
+          </a>
+        )}
+      </div>
+    )
+  }
 </article>

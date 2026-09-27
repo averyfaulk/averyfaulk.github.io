@@ -10,6 +10,11 @@ export type Download = {
   filename: string;
   url: string;
   bytes: number;
+  /**
+   * Post-download step, or null when the file runs as-is. `command` is a shell
+   * line shown verbatim under a `label`; `note` is prose.
+   */
+  installHint: { kind: 'command'; label: string; text: string } | { kind: 'note'; text: string } | null;
 };
 
 export type ReleaseInfo = {
@@ -20,6 +25,22 @@ export type ReleaseInfo = {
   publishedAt: string;
   url: string;
   downloads: Download[];
+  /**
+   * Release notes rendered to HTML. Safe to inject with `set:html`: the source
+   * is escaped before any markup is added, so only tags from `renderNotes`
+   * can ever reach the page.
+   */
+  notesHtml: string;
+};
+
+export type ReleasePanel = {
+  release: ReleaseInfo | null;
+  /**
+   * `pushed_at` of the repository. Fetched live and never cached - it changes
+   * on every commit, so caching it would rewrite the cache file on nearly
+   * every build and leave the working tree permanently dirty.
+   */
+  updatedAt: string | null;
 };
 
 type GhAsset = {
@@ -31,11 +52,16 @@ type GhAsset = {
 type GhRelease = {
   tag_name: string;
   name: string | null;
+  body: string | null;
   html_url: string;
   published_at: string;
   draft: boolean;
   prerelease: boolean;
   assets: GhAsset[];
+};
+
+type GhRepo = {
+  pushed_at: string | null;
 };
 
 type CacheShape = {
@@ -86,6 +112,122 @@ function authToken(): string | undefined {
   return process.env.GITHUB_RELEASES_TOKEN || process.env.GITHUB_TOKEN || undefined;
 }
 
+function headers(): Record<string, string> {
+  const base: Record<string, string> = {
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    'User-Agent': 'averyfaulk.github.io',
+  };
+  const token = authToken();
+  if (token) base.Authorization = `Bearer ${token}`;
+  return base;
+}
+
+const HTML_ESCAPES: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+};
+
+function escapeHtml(text: string): string {
+  return text.replace(/[&<>"']/g, (char) => HTML_ESCAPES[char] ?? char);
+}
+
+/** Bare URLs only - an unescaped `javascript:` or `data:` href never gets through. */
+function linkify(text: string): string {
+  return text.replace(/https?:\/\/[^\s<>"']+/g, (match) => {
+    const trailing = /[.,;:!?)\]]+$/.exec(match)?.[0] ?? '';
+    const url = trailing ? match.slice(0, -trailing.length) : match;
+    if (!url) return match;
+    return `<a href="${url}" rel="noopener noreferrer nofollow">${url}</a>${trailing}`;
+  });
+}
+
+function inline(text: string): string {
+  return linkify(
+    text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/`([^`]+)`/g, '<code>$1</code>'),
+  );
+}
+
+/**
+ * A deliberately small Markdown subset for GitHub release bodies: headings,
+ * bullet lists, `**bold**`, `` `code` `` and bare URLs. Input is escaped first,
+ * so a release description cannot inject markup - a real concern when the
+ * source is an API response rendered into a public page.
+ */
+export function renderNotes(body: string | null | undefined): string {
+  if (!body) return '';
+
+  // GitHub release bodies frequently arrive with CRLF endings.
+  const lines = body.replace(/\r\n?/g, '\n').split('\n');
+  const blocks: string[] = [];
+  let paragraph: string[] = [];
+  let bullets: string[] = [];
+
+  const flush = () => {
+    if (paragraph.length) {
+      blocks.push(`<p>${inline(escapeHtml(paragraph.join(' ')))}</p>`);
+      paragraph = [];
+    }
+    if (bullets.length) {
+      const items = bullets.map((item) => `<li>${inline(escapeHtml(item))}</li>`).join('');
+      blocks.push(`<ul>${items}</ul>`);
+      bullets = [];
+    }
+  };
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) {
+      flush();
+      continue;
+    }
+
+    const bullet = /^(?:[-*+]|\d+[.)])\s+(.*)$/.exec(line);
+    if (bullet) {
+      if (paragraph.length) flush();
+      bullets.push(bullet[1] ?? '');
+      continue;
+    }
+
+    const heading = /^#{1,6}\s+(.*)$/.exec(line);
+    if (heading) {
+      flush();
+      blocks.push(`<h4>${inline(escapeHtml(heading[1] ?? ''))}</</h4>`);
+      continue;
+    }
+
+    if (bullets.length) flush();
+    paragraph.push(line);
+  }
+  flush();
+
+  return blocks.join('');
+}
+
+function installHintFor(filename: string): Download['installHint'] {
+  if (/\.appimage$/i.test(filename)) {
+    return {
+      kind: 'command',
+      label: 'Install and run',
+      text: `chmod +x ${filename} && ./${filename}`,
+    };
+  }
+  if (/\.deb$/i.test(filename)) {
+    return { kind: 'command', label: 'Install with', text: `sudo apt install ./${filename}` };
+  }
+  if (/\.dmg$/i.test(filename)) {
+    return { kind: 'note', text: 'Open the disk image and drag the app into Applications.' };
+  }
+  if (/\.msi$/i.test(filename)) {
+    return { kind: 'note', text: 'Run the installer and follow the prompts.' };
+  }
+  // .exe installers and flatpaks need nothing beyond double-clicking.
+  return null;
+}
+
 function classify(asset: GhAsset): Download | null {
   for (const [platform, pattern] of EXTENSIONS) {
     if (pattern.test(asset.name)) {
@@ -95,6 +237,7 @@ function classify(asset: GhAsset): Download | null {
         filename: asset.name,
         url: asset.browser_download_url,
         bytes: asset.size,
+        installHint: installHintFor(asset.name),
       };
     }
   }
@@ -117,6 +260,7 @@ function summarise(release: GhRelease | undefined): ReleaseInfo | null {
     publishedAt: release.published_at,
     url: release.html_url,
     downloads,
+    notesHtml: renderNotes(release.body),
   };
 }
 
@@ -153,15 +297,9 @@ async function writeCache(repo: string, info: ReleaseInfo): Promise<void> {
 }
 
 async function fetchRelease(project: Project): Promise<ReleaseInfo | null> {
-  const headers: Record<string, string> = {
-    Accept: 'application/vnd.github+json',
-    'X-GitHub-Api-Version': '2022-11-28',
-    'User-Agent': 'averyfaulk.github.io',
-  };
-  const token = authToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
-
-  const response = await fetch(`${API}/repos/${project.repo}/releases?per_page=20`, { headers });
+  const response = await fetch(`${API}/repos/${project.repo}/releases?per_page=20`, {
+    headers: headers(),
+  });
   if (!response.ok) {
     throw new Error(`GitHub API responded ${response.status} ${response.statusText}`);
   }
@@ -169,35 +307,56 @@ async function fetchRelease(project: Project): Promise<ReleaseInfo | null> {
   return summarise(selectRelease(list, project.includePrerelease));
 }
 
-async function load(project: Project): Promise<ReleaseInfo | null> {
-  // Keep `astro dev` from spending API quota on every reload.
-  if (import.meta.env.DEV) return null;
-
-  const cached = await readCache(project.repo);
+/** Best effort: a missing last-updated date must never fail the build. */
+async function fetchUpdatedAt(repo: string): Promise<string | null> {
   try {
-    const info = await fetchRelease(project);
-    if (info) await writeCache(project.repo, info);
-    return info;
+    const response = await fetch(`${API}/repos/${repo}`, { headers: headers() });
+    if (!response.ok) return null;
+    const data = (await response.json()) as GhRepo;
+    return data.pushed_at ?? null;
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
-    console.warn(`[releases] live fetch failed for ${project.repo}: ${reason}`);
-    if (cached) {
-      console.warn(`[releases] using cached release ${cached.version} for ${project.repo}`);
-      return cached;
-    }
-    console.warn(`[releases] no cached release for ${project.repo}; downloads omitted`);
+    console.warn(`[releases] could not read pushed_at for ${repo}: ${reason}`);
     return null;
   }
 }
 
-const inflight = new Map<string, Promise<ReleaseInfo | null>>();
+async function load(project: Project): Promise<ReleasePanel> {
+  // Keep `astro dev` from spending API quota on every reload.
+  if (import.meta.env.DEV || !project.repo) return { release: null, updatedAt: null };
+
+  const updatedAt = fetchUpdatedAt(project.repo);
+
+  let release: ReleaseInfo | null = null;
+  if (project.showReleases) {
+    const cached = await readCache(project.repo);
+    try {
+      release = await fetchRelease(project);
+      if (release) await writeCache(project.repo, release);
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      console.warn(`[releases] live fetch failed for ${project.repo}: ${reason}`);
+      if (cached) {
+        console.warn(`[releases] using cached release ${cached.version} for ${project.repo}`);
+        release = cached;
+      } else {
+        console.warn(`[releases] no cached release for ${project.repo}; downloads omitted`);
+      }
+    }
+  }
+
+  return { release, updatedAt: await updatedAt };
+}
+
+const inflight = new Map<string, Promise<ReleasePanel>>();
 
 /** Memoised per repo, so N pages referencing a project cost one request. */
-export function getRelease(project: Project): Promise<ReleaseInfo | null> {
-  let pending = inflight.get(project.repo);
+export function getProjectRelease(project: Project): Promise<ReleasePanel> {
+  const key = project.repo ?? `wip:${project.slug}`;
+  let pending = inflight.get(key);
   if (!pending) {
     pending = load(project);
-    inflight.set(project.repo, pending);
+    inflight.set(key, pending);
   }
   return pending;
 }
@@ -223,4 +382,9 @@ export function formatDate(iso: string): string {
     day: 'numeric',
     timeZone: 'UTC',
   });
+}
+
+/** True when both timestamps fall on the same UTC day, so one can be hidden. */
+export function isSameDay(a: string, b: string): boolean {
+  return formatDate(a) === formatDate(b);
 }

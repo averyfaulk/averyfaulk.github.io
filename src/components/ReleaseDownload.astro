@@ -1,65 +1,114 @@
 ---
-import type { ReleaseInfo } from '../lib/releases';
-import { formatBytes, formatDate } from '../lib/releases';
+import type { ReleasePanel } from '../lib/releases';
+import { formatBytes, formatDate, isSameDay } from '../lib/releases';
 import VersionBadge from './VersionBadge.astro';
 
 interface Props {
-  release: ReleaseInfo;
+  panel: ReleasePanel;
   repo: string;
   platforms: string[];
 }
 
-const { release, repo, platforms } = Astro.props;
+const { panel, repo, platforms } = Astro.props;
+const { release, updatedAt } = panel;
+// A push and a release on the same day would otherwise print the same date
+// twice in a row, which reads like a bug.
+const showUpdated = Boolean(updatedAt) && !isSameDay(release?.publishedAt ?? '', updatedAt ?? '');
 ---
 
-<section class="rounded-xl border border-line bg-surface p-6 sm:p-8">
-  <div class="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-5">
-    <h2 class="text-lg font-semibold tracking-tight">Download</h2>
-    <VersionBadge version={release.version} isBeta={release.isBeta} href={release.url} />
-  </div>
+{
+  release && (
+    <section class="rounded-xl border border-line bg-surface p-6 sm:p-8">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-5">
+        <h2 class="text-lg font-semibold tracking-tight">Download</h2>
+        <VersionBadge version={release.version} isBeta={release.isBeta} href={release.url} />
+      </div>
 
-  {
-    release.downloads.length > 0 ? (
-      <ul class="mt-5 flex flex-col gap-3">
-        {release.downloads.map((download) => (
-          <li>
-            <a
-              href={download.url}
-              rel="noopener"
-              class="group flex items-center justify-between gap-4 rounded-lg border border-line bg-elevated px-4 py-3.5 transition-colors hover:border-accent/50"
-            >
-              <span class="min-w-0">
-                <span class="block font-medium">{download.platformLabel}</span>
-                <span class="mt-0.5 block truncate text-sm text-muted">
-                  {download.filename} · {formatBytes(download.bytes)}
+      {release.downloads.length > 0 ? (
+        <ul class="mt-5 flex flex-col gap-3">
+          {release.downloads.map((download) => (
+            <li>
+              <a
+                href={download.url}
+                rel="noopener"
+                class="group flex items-center justify-between gap-4 rounded-lg border border-line bg-elevated px-4 py-3.5 transition-colors hover:border-accent/50"
+              >
+                <span class="min-w-0">
+                  <span class="block font-medium">{download.platformLabel}</span>
+                  <span class="mt-0.5 block truncate text-sm text-muted">
+                    {download.filename} · {formatBytes(download.bytes)}
+                  </span>
                 </span>
-              </span>
-              <span class="shrink-0 text-accent transition-transform group-hover:translate-y-0.5" aria-hidden="true">
-                ↓
-              </span>
-              <span class="sr-only">Download {download.filename} for {download.platformLabel}</span>
-            </a>
-          </li>
-        ))}
-      </ul>
-    ) : (
-      <p class="mt-5 text-sm text-muted">
-        No installers are attached to this release. Grab the source from the{' '}
-        <a href={`https://github.com/${repo}`} rel="noopener" class="text-accent hover:underline">
-          repository
-        </a>{' '}
-        instead.
-      </p>
-    )
-  }
+                <span
+                  class="shrink-0 text-accent transition-transform group-hover:translate-y-0.5"
+                  aria-hidden="true"
+                >
+                  ↓
+                </span>
+                <span class="sr-only">
+                  Download {download.filename} for {download.platformLabel}
+                </span>
+              </a>
+              {download.installHint && (
+                <p class="mt-2 px-1 text-xs text-muted">
+                  {download.installHint.kind === 'command' ? (
+                    <>
+                      {download.installHint.label}{' '}
+                      <code class="rounded border border-line bg-elevated px-1.5 py-0.5 font-mono text-[0.7rem] text-fg">
+                        {download.installHint.text}
+                      </code>
+                    </>
+                  ) : (
+                    download.installHint.text
+                  )}
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p class="mt-5 text-sm text-muted">
+          No installers are attached to this release. Grab the source from the{' '}
+          <a href={`https://github.com/${repo}`} rel="noopener" class="text-accent hover:underline">
+            repository
+          </a>{' '}
+          instead.
+        </p>
+      )}
 
-  <p class="mt-5 text-sm text-muted">
-    <span class="tabular-nums">Published {formatDate(release.publishedAt)}</span>
-    <span aria-hidden="true"> · </span>
-    <a href={release.url} rel="noopener" class="text-accent hover:underline">
-      All releases
-    </a>
-    <span aria-hidden="true"> · </span>
-    {platforms.join(' · ')}
-  </p>
-</section>
+      {release.notesHtml && (
+        <div class="mt-6 border-t border-line pt-6">
+          <h3 class="text-xs font-semibold uppercase tracking-widest text-muted">
+            What&apos;s new in {release.version}
+          </h3>
+          {/* A JSX-style comment: notesHtml is produced by renderNotes, which
+              escapes its input before adding any tags, so this is safe. */}
+          <div
+            class="mt-3 text-sm leading-relaxed text-fg/90 [&_a]:text-accent [&_a]:hover:underline [&_code]:rounded [&_code]:border [&_code]:border-line [&_code]:bg-elevated [&_code]:px-1 [&_code]:font-mono [&_code]:text-[0.7rem] [&_li]:mt-1.5 [&_p+p]:mt-3 [&_strong]:font-semibold [&_ul]:mt-3 [&_ul]:list-disc [&_ul]:pl-5"
+            set:html={release.notesHtml}
+          />
+        </div>
+      )}
+
+      <p class="mt-6 text-sm text-muted">
+        <span class="tabular-nums">Published {formatDate(release.publishedAt)}</span>
+        {showUpdated && (
+          <>
+            <span aria-hidden="true"> · </span>
+            <span class="tabular-nums">Updated {formatDate(updatedAt as string)}</span>
+          </>
+        )}
+        <span aria-hidden="true"> · </span>
+        <a href={release.url} rel="noopener" class="text-accent hover:underline">
+          All releases
+        </a>
+        {platforms.length > 0 && (
+          <>
+            <span aria-hidden="true"> · </span>
+            {platforms.join(' · ')}
+          </>
+        )}
+      </p>
+    </section>
+  )
+}

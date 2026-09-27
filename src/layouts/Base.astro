@@ -5,12 +5,16 @@ import { site } from '../data/site';
 interface Props {
   title?: string;
   description?: string;
+  /** Serialised into a ld+json script tag. Escaped defensively by the layout. */
+  jsonLd?: Record<string, unknown> | Record<string, unknown>[];
 }
 
-const { title, description = site.description } = Astro.props;
+const { title, description = site.description, jsonLd } = Astro.props;
 const pageTitle = title ? `${title} · ${site.name}` : `${site.name} — ${site.tagline}`;
 // Astro.site is only defined when `site` is set in astro.config.mjs.
 const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site) : undefined;
+// `<` cannot appear raw: it would let a description close the script element.
+const jsonLdText = jsonLd ? JSON.stringify(jsonLd).replace(/</g, '\\u003c') : undefined;
 ---
 
 <!doctype html>
@@ -20,15 +24,19 @@ const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site) : undefin
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{pageTitle}</title>
     <meta name="description" content={description} />
+    <meta name="author" content={site.name} />
     {canonical && <link rel="canonical" href={canonical} />}
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
     <meta name="color-scheme" content="dark" />
     <meta name="theme-color" content="#09090b" />
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={site.name} />
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={description} />
     {canonical && <meta property="og:url" content={canonical} />}
+    <meta name="twitter:card" content="summary" />
+    {jsonLdText && <script type="application/ld+json" is:inline set:html={jsonLdText} />}
   </head>
   <body class="flex min-h-dvh flex-col">
     <header class="border-b border-line">

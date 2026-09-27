@@ -12,16 +12,23 @@
           "platformLabel": "Linux",
           "filename": "RimChronicle-1.2.3-beta.AppImage",
           "url": "https://github.com/averyfaulk/RimChronicle/releases/download/1.2.3/RimChronicle-1.2.3-beta.AppImage",
-          "bytes": 143103337
+          "bytes": 143103337,
+          "installHint": {
+            "kind": "command",
+            "label": "Install and run",
+            "text": "chmod +x RimChronicle-1.2.3-beta.AppImage && ./RimChronicle-1.2.3-beta.AppImage"
+          }
         },
         {
           "platform": "windows",
           "platformLabel": "Windows",
           "filename": "RimChronicle.Setup.1.2.3-beta.exe",
           "url": "https://github.com/averyfaulk/RimChronicle/releases/download/1.2.3/RimChronicle.Setup.1.2.3-beta.exe",
-          "bytes": 113760344
+          "bytes": 113760344,
+          "installHint": null
         }
-      ]
+      ],
+      "notesHtml": "<ul><li>Fixed AI features not working due to missing OpenCode header (note: OpenCode Zen does not work due to Zen limitations - I will be replacing this provider with another option in a future release)</li><li>Optimized AI token usage</li><li>Autosaves now also remove stale files left behind by renamed/deleted articles</li></ul><p><strong>Full Changelog</strong>: <a href=\"https://github.com/averyfaulk/RimChronicle/compare/1.2.0...1.2.3\" rel=\"noopener noreferrer nofollow\">https://github.com/averyfaulk/RimChronicle/compare/1.2.0...1.2.3</a></p>"
     }
   }
 }

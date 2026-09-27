@@ -3,22 +3,30 @@ export type Project = {
   slug: string;
   name: string;
   tagline: string;
-  /** owner/repo on GitHub, used for both the repo link and the release feed. */
-  repo: string;
+  /**
+   * owner/repo on GitHub. Drives the repository link and the release feed, so
+   * it is absent for anything not published yet.
+   */
+  repo?: string;
   /** One-paragraph summary, used for the card and meta description. */
   summary: string;
   /** Longer prose shown only on the project page. */
   detail: string;
-  features: { title: string; body: string }[];
-  tech: string[];
+  features?: { title: string; body: string }[];
+  tech?: string[];
   /** What the visitor can actually download today. */
-  platforms: string[];
+  platforms?: string[];
   /**
    * Whether a release GitHub has flagged `prerelease` may be treated as the
    * latest. Independent of the beta badge, which is presentation only.
    */
   includePrerelease: boolean;
   showReleases: boolean;
+  /**
+   * `wip` entries render as a non-linking card with no detail page, which is
+   * what a placeholder should do before there is anything to link to.
+   */
+  status?: 'active' | 'wip';
   featured: boolean;
   order: number;
 };
@@ -71,11 +79,33 @@ export const projects: Project[] = [
     platforms: ['Windows', 'Linux'],
     includePrerelease: true,
     showReleases: true,
+    status: 'active',
     featured: true,
     order: 1,
+  },
+  {
+    // Placeholder. Replace with a real project, or delete the entry.
+    slug: 'new-project',
+    name: 'New project',
+    tagline: 'Under construction',
+    summary: 'Something new. Too early to show yet.',
+    detail:
+      'This one is still in early stages, so there is not much to look at yet. Check back later.',
+    tech: [],
+    platforms: [],
+    includePrerelease: false,
+    showReleases: false,
+    status: 'wip',
+    featured: true,
+    order: 2,
   },
 ];
 
 export function bySlug(slug: string): Project | undefined {
   return projects.find((project) => project.slug === slug);
+}
+
+/** Only entries with a real page behind them. */
+export function hasPage(project: Project): boolean {
+  return project.status !== 'wip';
 }
